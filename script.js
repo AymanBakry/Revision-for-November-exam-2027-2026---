@@ -1,5 +1,5 @@
 /* ====== إعدادات المعلم ====== */
-// لاستقبال التسليمات: ضع هنا رابط Google Apps Script. اتركه فارغًا لتفعيل النسخ/التحميل فقط.
+// ضع هنا رابط Google Apps Script. اتركه فارغًا لتفعيل النسخ/التحميل فقط.
 const SUBMIT_URL="";
 const TITLE="Revision for Test Two 2026-2027";
 
