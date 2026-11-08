@@ -1,6 +1,6 @@
 /* ====== إعدادات المعلم ====== */
 // ضع هنا رابط Google Apps Script. اتركه فارغًا لتفعيل النسخ/التحميل فقط.
-const SUBMIT_URL="";
+const SUBMIT_URL="https://script.google.com/macros/s/1523/exec";
 const TITLE="Revision for Test Two 2026-2027";
 
 /* ====== الأسئلة ====== */
