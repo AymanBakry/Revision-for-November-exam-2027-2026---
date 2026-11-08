@@ -1,14 +1,112 @@
-const KEY="1523";
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>لوحة المعلم – Revision Games</title>
+<style>
+:root{--bg:#f4f1ff;--card:#fff;--tx:#241b3d;--mu:#6b6488;--pr:#6c4bff;--ok:#1fa971;--no:#e5484d;--ln:#ddd6f7}
+@media(prefers-color-scheme:dark){:root{--bg:#161227;--card:#221b3b;--tx:#f1edff;--mu:#a79fc7;--ln:#3a3060}}
+*{box-sizing:border-box}
+body{margin:0;font-family:Tahoma,"Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--tx)}
+.w{max-width:980px;margin:0 auto;padding:16px}
+.hd{background:linear-gradient(135deg,#6c4bff,#ff6bb5 60%,#ffb347);color:#fff;border-radius:20px;padding:16px;text-align:center;margin-bottom:14px;direction:ltr}
+.hd h2{margin:0;font-size:20px}.hd small{opacity:.95}
+.card{background:var(--card);border:2px solid var(--ln);border-radius:18px;padding:16px;margin-bottom:14px}
+input{padding:11px;border-radius:12px;border:2px solid var(--ln);background:var(--bg);color:var(--tx);font:inherit}
+.btn{background:var(--pr);color:#fff;border:0;border-radius:12px;padding:11px 18px;font:inherit;font-weight:700;cursor:pointer}
+.btn.g{background:transparent;color:var(--pr);border:2px solid var(--pr)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.st{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.st div{background:var(--card);border:2px solid var(--ln);border-radius:16px;padding:12px;text-align:center}
+.st b{display:block;font-size:26px;color:var(--pr)}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{padding:9px 8px;border-bottom:1px solid var(--ln);text-align:right;white-space:nowrap}
+th{background:var(--bg);position:sticky;top:0}
+td.nm{white-space:normal;min-width:180px}
+.hi{color:var(--ok);font-weight:700}.lo{color:var(--no);font-weight:700}
+pre{white-space:pre-wrap;direction:ltr;text-align:left;margin:6px 0 0;font:inherit;font-size:13px}
+details{white-space:normal}
+.mu{color:var(--mu)}
+</style>
+</head>
+<body><div class="w">
+<div class="hd"><h2>Bilad Al Qadim Primary &amp; Intermediate Boys' School</h2><small>👨‍🏫 لوحة المعلم · Revision Games – Test Two</small></div>
 
-function doPost(e){
-  const d=JSON.parse(e.postData.contents);
-  SpreadsheetApp.getActiveSheet().appendRow([d.time,d.seat,d.name,d.score,d.total,d.percent,d.mistakes,d.report]);
-  return ContentService.createTextOutput("ok");
-}
+<div class="card row">
+ <input id="k" type="password" placeholder="رمز المعلم" autocomplete="off" style="flex:1;min-width:180px" onkeydown="if(event.key==='Enter')load()">
+ <button class="btn" onclick="load()">عرض الدرجات 📊</button>
+ <span id="ms" class="mu"></span>
+</div>
 
-function doGet(e){
-  const out=o=>ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
-  if(e.parameter.key!==KEY)return out({error:"denied"});
-  const rows=SpreadsheetApp.getActiveSheet().getDataRange().getValues().map(r=>({time:String(r[0]),seat:String(r[1]),name:r[2],score:+r[3],total:+r[4],percent:+r[5],mistakes:String(r[6]),report:String(r[7])}));
-  return out(rows);
+<div id="out" style="display:none">
+ <div class="st" id="stats"></div>
+ <div class="card row">
+  <span>الترتيب حسب:</span>
+  <button class="btn g" id="mb" onclick="setMode('best')">أفضل محاولة</button>
+  <button class="btn g" id="ml" onclick="setMode('last')">آخر محاولة</button>
+  <input id="q" placeholder="🔍 بحث بالاسم أو رقم الجلوس" oninput="render()" style="flex:1;min-width:160px">
+  <button class="btn g" onclick="csv()">⬇️ تصدير CSV</button>
+ </div>
+ <div class="card tw"><table><thead><tr><th>#</th><th>رقم الجلوس</th><th>الاسم</th><th>الدرجة</th><th>%</th><th>أفضل</th><th>آخر</th><th>المحاولات</th><th>آخر تسليم</th><th>التقرير</th></tr></thead><tbody id="tb"></tbody></table></div>
+ <div class="card"><h3 id="nt"></h3><div id="nl" class="mu" style="line-height:2"></div></div>
+</div>
+</div>
+<script src="students.js"></script>
+<script>
+/* ضع هنا رابط Apps Script (نفس رابط SUBMIT_URL) */
+const API="";
+let rows=[],mode="best",G=[];
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const msg=t=>$("ms").textContent=t;
+
+async function load(){
+ if(!API){msg("ضع رابط API في أول ملف teacher.html");return}
+ if(!$("k").value.trim()){msg("اكتب رمز المعلم أولًا");return}
+ msg("جارٍ التحميل...");
+ try{
+  const r=await fetch(API+"?key="+encodeURIComponent($("k").value.trim()));
+  const d=await r.json();
+  if(d.error){msg("❌ الرمز غير صحيح");return}
+  rows=d.filter(x=>x.seat&&!isNaN(x.score));
+  $("out").style.display="block";msg("✅ تم التحميل");render();
+ }catch(e){msg("تعذر التحميل، تحقق من الرابط والاتصال")}
 }
+function group(){
+ const g={};
+ rows.forEach(r=>{
+  const o=g[r.seat]||(g[r.seat]={seat:r.seat,name:STU[r.seat]||r.name,n:0,best:r,last:r});
+  o.n++;if(r.score>o.best.score)o.best=r;o.last=r;
+ });
+ return g;
+}
+function setMode(m){mode=m;render()}
+function render(){
+ const g=group();G=Object.values(g);
+ const q=$("q").value.trim();
+ let list=G.map(o=>({...o,cur:o[mode]}));
+ list.sort((a,b)=>b.cur.score-a.cur.score||a.name.localeCompare(b.name,"ar"));
+ const avg=list.length?(list.reduce((s,o)=>s+o.cur.score,0)/list.length):0;
+ const total=Object.keys(STU).length,miss=Object.keys(STU).filter(s=>!g[s]);
+ $("stats").innerHTML=`<div><b>${list.length}/${total}</b>سلّموا</div><div><b>${avg.toFixed(1)}</b>المتوسط</div><div><b>${list.length?list[0].cur.score:0}</b>أعلى درجة</div><div><b>${rows.length}</b>إجمالي التسليمات</div>`;
+ $("mb").style.background=mode=="best"?"var(--pr)":"";$("mb").style.color=mode=="best"?"#fff":"";
+ $("ml").style.background=mode=="last"?"var(--pr)":"";$("ml").style.color=mode=="last"?"#fff":"";
+ $("tb").innerHTML=list.filter(o=>!q||o.name.includes(q)||o.seat.includes(q)).map((o,i)=>`<tr>
+  <td>${i+1}</td><td>${o.seat}</td><td class="nm">${esc(o.name)}</td>
+  <td class="${o.cur.percent>=50?"hi":"lo"}">${o.cur.score}/${o.cur.total}</td><td>${o.cur.percent}%</td>
+  <td>${o.best.score}</td><td>${o.last.score}</td><td>${o.n}</td><td>${esc(o.last.time)}</td>
+  <td>${o.cur.report?`<details><summary>عرض</summary><pre>${esc(o.cur.report)}</pre></details>`:"—"}</td></tr>`).join("");
+ $("nt").textContent=`لم يسلّموا بعد (${miss.length})`;
+ $("nl").innerHTML=miss.map(s=>`${esc(STU[s])} <small>(${s})</small>`).join(" · ")||"🎉 الجميع سلّم";
+}
+function csv(){
+ const L=[["رقم الجلوس","الاسم","الدرجة","الإجمالي","النسبة","أفضل","آخر","المحاولات","آخر تسليم","التقرير"]];
+ G.map(o=>({...o,cur:o[mode]})).sort((a,b)=>b.cur.score-a.cur.score).forEach(o=>L.push([o.seat,o.name,o.cur.score,o.cur.total,o.cur.percent,o.best.score,o.last.score,o.n,o.last.time,o.cur.report||""]));
+ const t="\uFEFF"+L.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(",")).join("\n");
+ const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([t],{type:"text/csv;charset=utf-8"}));a.download="grades.csv";a.click();
+}
+</script>
+</body>
+</html>
