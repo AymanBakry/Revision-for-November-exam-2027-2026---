@@ -1,5 +1,5 @@
 /* ====== إعدادات المعلم ====== */
-// لاستقبال التسليمات: ضع هنا رابط Google Apps Script أو Formspree. اتركه فارغًا لتفعيل النسخ/التحميل فقط.
+// لاستقبال التسليمات: ضع هنا رابط Google Apps Script. اتركه فارغًا لتفعيل النسخ/التحميل فقط.
 const SUBMIT_URL="";
 const TITLE="Revision for Test Two 2026-2027";
 
@@ -69,21 +69,30 @@ const TOTAL=steps.length; // 50
 const shuf=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
 steps.forEach(s=>{if(s.t=="m")s.o=shuf(s.o)});
 const $=document.getElementById("app");
-let st={name:"",cls:"",i:0,ans:{},rep:""};
+let st={seat:"",name:"",i:0,ans:{},rep:""};
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const norm=s=>(s||"").toLowerCase().replace(/[’']/g,"'").replace(/[^a-z' ]/g," ");
 
+const sc=(c,a)=>`<div class="sc ${c}">${a.map((e,i)=>`<span style="animation-delay:${i*.35}s">${e}</span>`).join("")}</div>`;
+const SCN=[sc("s1",["🦠","💉","🛌","🥦","🏃‍♂️","🧼"]),sc("s2",["🏫","🎨","🖌️","🖼️","🏆"]),sc("s3",["☀️","🐪","🌵","🏜️","💧"]),sc("s4",["🧠","😰","⚡","📚","🧘‍♂️"]),sc("s5",["📝","🧠","🫀","✅"])];
 function start(){
- $.innerHTML=`<div class="card"><h1>🎮 ${TITLE}</h1><p class="mu">أجب عن ${TOTAL} سؤالًا في 4 مستويات + تقرير كتابي. ستظهر درجتك بعد التسليم.</p>
- <input id="nm" placeholder="الاسم الكامل"><input id="cl" placeholder="الصف / الفصل">
- <p><button class="btn" onclick="go()">ابدأ اللعب 🚀</button></p></div>`;
+ document.body.classList.remove("play");
+ $.innerHTML=`<div class="card"><h1>🎮 ${TITLE}</h1><p class="mu">أدخل رقم الجلوس الخاص بك للدخول، ثم أجب عن ${TOTAL} سؤالًا في 4 مستويات + تقرير كتابي. ستظهر درجتك بعد التسليم وتُسجَّل باسمك.</p>
+ <input id="sn" class="en" inputmode="numeric" placeholder="رقم الجلوس / Seat Number" oninput="chk()">
+ <div id="wl" class="wl"></div>
+ <p><button class="btn" id="gb" onclick="go()" disabled>ابدأ اللعب 🚀</button></p></div>`;
+}
+function chk(){
+ const v=document.getElementById("sn").value.trim(),n=STU[v];
+ document.getElementById("wl").innerHTML=n?`✅ أهلًا بك يا <b>${esc(n)}</b>`:(v.length>=9?"❌ رقم الجلوس غير موجود، تأكد منه":"");
+ document.getElementById("gb").disabled=!n;st.seat=n?v:"";
 }
 function go(){
- st.name=document.getElementById("nm").value.trim();st.cls=document.getElementById("cl").value.trim();
- if(!st.name){alert("اكتب اسمك أولًا");return}
- st.i=0;draw();
+ if(!STU[st.seat])return;
+ st.name=STU[st.seat];st.i=0;st.ans={};st.rep="";draw();
 }
 function draw(){
+ document.body.classList.add("play");
  const q=steps[st.i],sec=SECS[q.s],done=Object.keys(st.ans).filter(k=>st.ans[k]).length;
  let p="";
  if(sec.p)p=`<div class="ps">${sec.p.replace(/\{(\d)\}/g,(m,n)=>`<span class="b ${q.b==n?"cur":""}">(${n})</span>`)}</div>`;
@@ -93,7 +102,7 @@ function draw(){
  const last=st.i==TOTAL-1;
  $.innerHTML=`<div class="top"><span>⭐ ${done}/${TOTAL}</span><span>${st.name}</span></div>
  <div class="bar"><i style="width:${done/TOTAL*100}%"></i></div><br>
- <div class="card"><span class="lv">${sec.n}</span>${p}<div class="q">${st.i+1}. ${esc(q.q)}</div>${body}
+ <div class="card">${SCN[q.s]}<span class="lv">${sec.n}</span>${p}<div class="q">${st.i+1}. ${esc(q.q)}</div>${body}
  <div class="nav"><button class="btn g" onclick="mv(-1)" ${st.i?"":"disabled"}>→ السابق</button>
  ${last?`<button class="btn" onclick="rep()">التقرير الكتابي ✍️</button>`:`<button class="btn" onclick="mv(1)">التالي ←</button>`}</div></div>
  <p class="mu" style="text-align:center">يمكنك الرجوع وتعديل إجاباتك قبل التسليم</p>`;
@@ -101,7 +110,7 @@ function draw(){
 function pick(o){st.ans[st.i]=o;draw()}
 function mv(d){st.i=Math.max(0,Math.min(TOTAL-1,st.i+d));draw()}
 function rep(){
- $.innerHTML=`<div class="card"><span class="lv">المستوى 5 · Report Writing</span><div class="q">${REPORT}</div>
+ $.innerHTML=`<div class="card">${SCN[4]}<span class="lv">المستوى 5 · Report Writing</span><div class="q">${REPORT}</div>
  <textarea class="en" id="rp" rows="12" placeholder="Heading&#10;Introduction...&#10;Effects on our body...&#10;Effects on our mind...&#10;Conclusion...">${esc(st.rep)}</textarea>
  <p class="mu">هذا السؤال يصححه المعلم يدويًا ولا يدخل في الدرجة التلقائية.</p>
  <div class="nav"><button class="btn g" onclick="st.rep=document.getElementById('rp').value;draw()">→ رجوع</button>
@@ -113,6 +122,7 @@ function ok(q,a){
  const w=norm(a).split(/\s+/);return q.g.every(g=>g.some(k=>w.includes(k)));
 }
 function finish(){
+ document.body.classList.remove("play");
  const wrong=[];let sc=0;
  steps.forEach((q,i)=>{if(ok(q,st.ans[i]))sc++;else wrong.push({n:i+1,q:q.q,y:st.ans[i]||"—",c:q.t=="m"?q.a:q.g.map(g=>g[0]).join(" + ")+" (keywords)"})});
  st.sc=sc;st.wrong=wrong;
@@ -121,15 +131,15 @@ function finish(){
  $.innerHTML=`<div class="card"><h1 style="text-align:center">النتيجة النهائية</h1>
  <div class="st">${"⭐".repeat(stars)}${"☆".repeat(3-stars)}</div>
  <div class="big">${sc} / ${TOTAL}</div><p style="text-align:center;font-size:18px">${pc}% — ${msg}</p>
- <p class="mu" style="text-align:center">${esc(st.name)} ${esc(st.cls)}</p>
+ <p class="mu" style="text-align:center">${esc(st.name)} · ${st.seat}</p>
  <p style="text-align:center"><button class="btn" id="sb" onclick="sub()">📨 تسليم الإجابات</button>
  <button class="btn g" onclick="cp()">📋 نسخ النتيجة</button>
  <button class="btn g" onclick="dl()">⬇️ تحميل</button></p><p id="ms" class="mu" style="text-align:center"></p></div>
  <div class="card"><h3>مراجعة الأخطاء (${wrong.length})</h3>${wrong.map(w=>`<div class="rv">${w.n}. ${esc(w.q)}<br>Your answer: ${esc(w.y)} · Correct: <b>${esc(w.c)}</b></div>`).join("")||"<p>لا توجد أخطاء! 🎉</p>"}
- <button class="btn g" onclick="st={name:'',cls:'',i:0,ans:{},rep:''};start()">🔄 إعادة المحاولة</button></div>`;
+ <button class="btn g" onclick="st={seat:'',name:'',i:0,ans:{},rep:''};start()">🔄 إعادة المحاولة</button></div>`;
 }
-function payload(){return{name:st.name,class:st.cls,score:st.sc,total:TOTAL,percent:Math.round(st.sc/TOTAL*100),time:new Date().toLocaleString(),mistakes:st.wrong.map(w=>w.n).join(","),report:st.rep}}
-function txt(){const p=payload();return`${TITLE}\nName: ${p.name}\nClass: ${p.class}\nScore: ${p.score}/${p.total} (${p.percent}%)\nWrong Qs: ${p.mistakes||"none"}\nDate: ${p.time}\n\nReport:\n${p.report||"(empty)"}`}
+function payload(){return{seat:st.seat,name:st.name,score:st.sc,total:TOTAL,percent:Math.round(st.sc/TOTAL*100),time:new Date().toLocaleString(),mistakes:st.wrong.map(w=>w.n).join(","),report:st.rep}}
+function txt(){const p=payload();return`${TITLE}\nSeat: ${p.seat}\nName: ${p.name}\nScore: ${p.score}/${p.total} (${p.percent}%)\nWrong Qs: ${p.mistakes||"none"}\nDate: ${p.time}\n\nReport:\n${p.report||"(empty)"}`}
 async function sub(){
  const m=document.getElementById("ms"),b=document.getElementById("sb");
  if(!SUBMIT_URL){m.textContent="لم يتم ربط البوابة بعد — استخدم «نسخ النتيجة» أو «تحميل» وأرسلها لمعلمك.";return}
